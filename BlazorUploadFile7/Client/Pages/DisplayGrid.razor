@@ -1,0 +1,99 @@
+﻿@page "/displaygrid"
+@using BlazorUploadFile7.Shared
+@using Microsoft.AspNetCore.Components.QuickGrid;
+@inject HttpClient Http
+@inject Person person
+
+<h3>DisplayGrid</h3>
+
+<p>@person.ID</p>
+
+<p>@Message</p>
+
+@if (Persons == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+
+    <QuickGrid Pagination="Pagination" Items="Persons.AsQueryable()" @ref="grid" ResizableColumns>
+    <PropertyColumn Property="f=>f.FirstName" Sortable="true" />
+    <PropertyColumn Property="f=>f.LastName" Sortable="true" />
+    <PropertyColumn Property="f=>f.Address" Sortable="true" />
+    <PropertyColumn Property="f=>f.BirthDate" Format="dddd, dd MMMM yyyy" Sortable="true" />
+    <PropertyColumn Property="f=>f.isActive" Sortable="true">
+        <ColumnOptions>
+            <label>
+                <input type="checkbox" @bind="ActiveFilter" @bind:after="Filter" />Actives Only
+            </label>
+        </ColumnOptions>
+    </PropertyColumn>
+    <TemplateColumn Title="Actions">
+        <button class="btn btn-primary" @onclick="@(() => Edit(@context))">Edit</button>
+    </TemplateColumn>
+    @*       <ColumnOptions>
+    <input />
+    </ColumnOptions>
+    </PropertyColumn>
+    <TemplateColumn Align="Align.Left">
+    <div>
+    <span>
+    Wow it's really @context. today!
+    </span>
+    </div>
+    </TemplateColumn>*@
+</QuickGrid>
+    <Paginator Value="@Pagination" />
+
+}
+
+@code {
+
+    private List<Person>? OriginalPersons;
+    private List<Person>? Persons;
+    private string? Message;
+    private bool ActiveFilter = false;
+    QuickGrid<Person>? grid;
+    PaginationState Pagination = new PaginationState { ItemsPerPage = 10 };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Persons = OriginalPersons = await Http.GetFromJsonAsync<List<Person>>("/api/Person");
+        }
+        catch (Exception ex)
+        {
+
+            throw;
+        }
+    }
+
+    private void Edit(Person p)
+    {
+        Person person = Persons.Find(per => per.ID == p.ID);
+        if (person is not null)
+        {
+            Message = $"Editing {person.FirstName}";
+            person.isActive = !person.isActive;
+        }
+
+        return;
+    }
+
+    private async Task Filter()
+    {
+        Random rnd = new Random(DateTime.Now.Millisecond);
+        if (ActiveFilter)
+        {
+            Persons = OriginalPersons.Where(o => o.isActive).ToList();
+        }
+        else
+        {
+            Persons = OriginalPersons;
+        }
+        person.ID = rnd.Next();
+        await grid!.RefreshDataAsync();
+    }
+}
